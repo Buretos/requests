@@ -1,0 +1,24 @@
+const mongoose = require('mongoose');
+
+   const requestSchema = new mongoose.Schema({
+     fullName: {
+       type: String,
+       required: true
+     },
+     phoneNumber: {
+       type: String,
+       required: true
+     },
+     requestText: {
+       type: String,
+       required: true
+     },
+     submissionDate: {
+       type: Date,
+       default: Date.now
+     }
+   });
+
+   const Request = mongoose.model('Request', requestSchema);
+
+   module.exports = Request;
