@@ -1,162 +1,140 @@
-const express = require('express')
-const chalk = require('chalk')
-const path = require('path')
-const mongoose = require('mongoose')
-const cookieParser = require('cookie-parser')
-const { addNote, getNotes, removeNote, updateNote } = require('./notes.controller')
-const { addUser, loginUser } = require('./users.controller')
-const auth = require('./middlewares/auth')
+const express = require("express");
+const chalk = require("chalk");
+const path = require("path");
+const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser");
+const { addRequest, getRequests } = require("./requests.controller");
+const { addUser, loginUser } = require("./users.controller");
+const auth = require("./middlewares/auth");
 
-const port = 3000
-const app = express()
+const port = 3000;
+const app = express();
 
-app.set('view engine', 'ejs')
-app.set('views', 'pages')
+app.set("view engine", "ejs");
+app.set("views", "pages");
 
-app.use(express.static(path.resolve(__dirname, 'public')))
-app.use(express.json())
-app.use(cookieParser())
-app.use(express.urlencoded({
-  extended: true
-}))
-
-app.get('/login', async (req, res) => {
-  res.render('login', {
-    title: 'Express App',
-    error: undefined
+app.use(express.static(path.resolve(__dirname, "public")));
+app.use(express.json());
+app.use(cookieParser());
+app.use(
+  express.urlencoded({
+    extended: true,
   })
-})
+);
 
-app.post('/login', async (req, res) => {
+app.get("/login", async (req, res) => {
+  res.render("login", {
+    title: "Express App",
+    error: undefined,
+  });
+});
+
+app.post("/login", async (req, res) => {
   try {
     const token = await loginUser(req.body.email, req.body.password);
 
-    res.cookie('token', token, { httpOnly: true });
+    res.cookie("token", token, { httpOnly: true });
 
-    res.redirect('/')
+    res.redirect("/");
   } catch (e) {
-    res.render('login', {
-      title: 'Express App',
-      error: e.message
-    })
+    res.render("login", {
+      title: "Express App",
+      error: e.message,
+    });
   }
-})
+});
 
-app.get('/register', async (req, res) => {
-  res.render('register', {
-    title: 'Express App',
-    error: undefined
-  })
-})
+app.get("/register", async (req, res) => {
+  res.render("register", {
+    title: "Express App",
+    error: undefined,
+  });
+});
 
-app.post('/register', async (req, res) => {
+app.post("/register", async (req, res) => {
   try {
     await addUser(req.body.email, req.body.password);
 
-    res.redirect('/login')
+    res.redirect("/login");
   } catch (e) {
     if (e.code === 11000) {
-      res.render('register', {
-        title: 'Express App',
-        error: 'Email is already registered'
-      })
+      res.render("register", {
+        title: "Express App",
+        error: "Email is already registered",
+      });
 
-      return
+      return;
     }
-    res.render('register', {
-      title: 'Express App',
-      error: e.message
-    })
+    res.render("register", {
+      title: "Express App",
+      error: e.message,
+    });
   }
-})
+});
 
-app.get('/logout', (req, res) => {
-  res.cookie('token', '', { httpOnly: true })
+app.get("/logout", (req, res) => {
+  res.cookie("token", "", { httpOnly: true });
 
-  res.redirect('/login')
-})
+  res.redirect("/login");
+});
+
+app.get("/requests", async (req, res) => {
+  res.render("requests", {
+    title: "Заявки с формы",
+    requests: await getRequests(),
+    created: false,
+    error: false,
+  });
+});
 
 app.use(auth);
 
-app.get('/', async (req, res) => {
-  res.render('index', {
-    title: 'Express App',
-    notes: await getNotes(),
-    userEmail: req.user.email,
+app.get("/", async (req, res) => {
+  res.render("request", {
+    title: "Запись к врачу",
     created: false,
-    error: false
-  })
-})
+    error: false,
+  });
+});
 
-app.post('/', async (req, res) => {
+app.post("/", async (req, res) => {
   try {
-    await addNote(req.body.title, req.user.email)
-    res.render('index', {
-      title: 'Express App',
-      notes: await getNotes(),
-      userEmail: req.user.email,
+    await addRequest(
+      req.body.fullName,
+      req.body.phoneNumber,
+      req.body.requestText,
+      req.user.email
+    );
+    res.render("request", {
+      title: "Запись к врачу",
       created: true,
-      error: false
-    })
+      error: false,
+    });
   } catch (e) {
-    console.error('Creation error', e)
-    res.render('index', {
-      title: 'Express App',
-      notes: await getNotes(),
-      userEmail: req.user.email,
+    console.error("Creation error", e);
+    res.render("request", {
+      title: "Запись к врачу",
       created: false,
-      error: true
-    })
+      error: true,
+    });
   }
-})
+});
 
-app.delete('/:id', async (req, res) => {
-  try {
-    await removeNote(req.params.id, req.user.email)
-    res.render('index', {
-      title: 'Express App',
-      notes: await getNotes(),
-      userEmail: req.user.email,
-      created: false,
-      error: false
-    })
-  } catch (e) {
-    res.render('index', {
-      title: 'Express App',
-      notes: await getNotes(),
-      userEmail: req.user.email,
-      created: false,
-      error: e.message
-    })
-  }
-})
+app.get("/", async (req, res) => {
+  res.render("requests", {
+    title: "Заявки с формы",
+    requests: await getRequests(),
+    created: false,
+    error: false,
+  });
+});
 
-app.put('/:id', async (req, res) => {
-  try {
-    await updateNote({ id: req.params.id, title: req.body.title }, req.user.email)
-    res.render('index', {
-      title: 'Express App',
-      notes: await getNotes(),
-      userEmail: req.user.email,
-      created: false,
-      error: false
-    })
-  } catch (e) {
-    res.render('index', {
-      title: 'Express App',
-      notes: await getNotes(),
-      userEmail: req.user.email,
-      created: false,
-      error: e.message
-    })
-  }
-})
-
-mongoose.connect(
-  'mongodb+srv://morozcuporos:121354As@cluster0.d8xe1od.mongodb.net/requests?retryWrites=true&w=majority&appName=Cluster0'
-).then(() => {
-  app.listen(port, () => {
-    console.log(chalk.green(`Server has been started on port ${port}...`))
-  })
-})
-
+mongoose
+  .connect(
+    "mongodb+srv://morozcuporos:121354As@cluster0.d8xe1od.mongodb.net/requests?retryWrites=true&w=majority&appName=Cluster0"
+  )
+  .then(() => {
+    app.listen(port, () => {
+      console.log(chalk.green(`Server has been started on port ${port}...`));
+    });
+  });
